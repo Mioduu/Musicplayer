@@ -3,62 +3,27 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 )
 
-func main() {
-	fmt.Println("Ze względu na prawa autorskie piosenek nie ma i nie będzie lolz dodajcie sobie sami")
-	fmt.Println("Wybierz jedną z piosenek: 1: |ShadowWhisper| 2: |ChillLofi| 3: |Goodvibes| 4: |Dodaj piosenki|")
-	var userInput int
-	var selectedTrack string
-	fmt.Scanf("%d\n", &userInput)
-	switch userInput {
-	case 1:
-		selectedTrack = "ShadowWhisper.mp3"
-	case 2:
-		selectedTrack = "Lofitypeshit.mp3"
-	case 3:
-		selectedTrack = "Goodvibes.mp3"
-	case 4:
-		var userPath string
-		var userSong string
-		var songs []string
-		_, err := os.Stat("cfg.txt")
-		if os.IsNotExist(err) {
-			fmt.Println("Podaj path do folderu z piosenkami: ")
-			fmt.Scanf("%s\n", &userPath)
-			os.WriteFile("cfg.txt", []byte(userPath), 0644)
-		} else {
-			fmt.Println("Znaleziono poprzedni path")
-		}
-		data, err := os.ReadFile("cfg.txt")
-		if err != nil {
-			panic(err)
-		}
-		listDirectory, err := os.ReadDir(string(data))
-		if err != nil {
-			panic(err)
-		}
-		for _, file := range listDirectory {
-			if !file.IsDir() {
-				fileName := file.Name()
-				if strings.HasSuffix(fileName, ".mp3") {
-					fileNameShort := strings.TrimSuffix(fileName, ".mp3")
-					songs = append(songs, fileNameShort)
-				}
-			}
-		}
-		fmt.Printf("Twoje piosenki: %v\n", songs)
-		fmt.Println("Podaj nazwe piosenki: ")
-		fmt.Scanf("%s\n", &userSong)
-		selectedTrack = string(data) + userSong + ".mp3"
+var songs []string
+var userPath string
+var selectedTrack string
+var userSong string
+var basePath string
+var userData []byte
 
-	}
+func playSong() {
 	f, err := os.Open(selectedTrack)
 	if err != nil {
 		panic(err)
@@ -80,4 +45,100 @@ func main() {
 	speaker.Play(volume)
 
 	select {}
+
+}
+
+func checkDir(entry *widget.Entry) {
+	_, err := os.Stat("cfg.txt")
+	if os.IsNotExist(err) {
+		os.WriteFile("cfg.txt", []byte(userPath), 0644)
+		basePath = userPath
+	}
+	data, err := os.ReadFile("cfg.txt")
+	if err != nil {
+		panic(err)
+	}
+	userData = data
+	entry.SetText(string(userData))
+	basePath = string(userData)
+}
+
+func showSongs(list *widget.List) {
+	songs = nil
+	listDirectory, err := os.ReadDir(basePath)
+	if err != nil {
+		panic(err)
+	}
+	for _, file := range listDirectory {
+		if !file.IsDir() {
+			fileName := file.Name()
+			if strings.HasSuffix(fileName, ".mp3") {
+				fileNameShort := strings.TrimSuffix(fileName, ".mp3")
+				songs = append(songs, fileNameShort)
+			}
+		}
+	}
+	list.Refresh()
+}
+
+func main() {
+	a := app.New()
+	w := a.NewWindow("Music player")
+	w.Resize(fyne.NewSize(600, 400))
+
+	label := widget.NewLabel("Music player")
+
+	entry := widget.NewEntry()
+	entry.SetPlaceHolder("Podaj patha do folderu z piosenkami")
+
+	list := widget.NewList(
+		func() int { return len(songs) },
+		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func(i widget.ListItemID, o fyne.CanvasObject) {
+			o.(*widget.Label).SetText(songs[i])
+		},
+	)
+	list.OnSelected = func(id widget.ListItemID) {
+		userSong = songs[id]
+	}
+	checkSavedDir := widget.NewButton("Check last dir", func() {
+		checkDir(entry)
+	})
+	dirButton := widget.NewButton("Explore directory", func() {
+		userPath = entry.Text
+		if userPath == "" {
+			fmt.Println("Podaj ścieżke przed sprawdzeniem")
+			return
+		}
+		basePath = userPath
+		os.WriteFile("cfg.txt", []byte(userPath), 0644)
+		showSongs(list)
+	})
+	playButton := widget.NewButton("Play Song", func() {
+		var songToPlay string
+		if userSong != "" {
+			songToPlay = userSong
+		} else {
+			fmt.Println("Nie wybrano żadnej piosenki")
+			return
+		}
+		selectedTrack = filepath.Join(basePath, songToPlay+".mp3")
+		go playSong()
+	})
+
+	listScroll := container.NewVScroll(list)
+	listScroll.SetMinSize(fyne.NewSize(300, 200))
+
+	content := container.NewVBox(
+		label,
+		entry,
+		checkSavedDir,
+		dirButton,
+		widget.NewLabel("Lista piosenek:"),
+		listScroll,
+		playButton,
+	)
+
+	w.SetContent(content)
+	w.ShowAndRun()
 }
