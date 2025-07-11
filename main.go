@@ -9,8 +9,12 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
@@ -22,6 +26,29 @@ var selectedTrack string
 var userSong string
 var basePath string
 var userData []byte
+var currentStreamer beep.StreamSeekCloser
+var ctrl *beep.Ctrl
+var iconPlay *canvas.Image
+var iconPause *canvas.Image
+var iconStop *canvas.Image
+
+func loadResourceFromPath(path string) fyne.Resource {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Println("Błąd przy ładowaniu ikony:", path, err)
+		return theme.CancelIcon()
+	}
+	name := filepath.Base(path)
+	return fyne.NewStaticResource(name, data)
+}
+
+func pauseOrResume() {
+	if ctrl != nil {
+		speaker.Lock()
+		ctrl.Paused = !ctrl.Paused
+		speaker.Unlock()
+	}
+}
 
 func playSong() {
 	f, err := os.Open(selectedTrack)
@@ -32,12 +59,13 @@ func playSong() {
 	if err != nil {
 		panic(err)
 	}
+	currentStreamer = streamer
 	defer streamer.Close()
 
 	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-
+	ctrl = &beep.Ctrl{Streamer: streamer, Paused: false}
 	volume := &effects.Volume{
-		Streamer: streamer,
+		Streamer: ctrl,
 		Base:     2,
 		Volume:   -2,
 		Silent:   false,
@@ -45,6 +73,14 @@ func playSong() {
 	speaker.Play(volume)
 
 	select {}
+
+}
+
+func cancelSong() {
+	if currentStreamer != nil {
+		currentStreamer.Close()
+		currentStreamer = nil
+	}
 
 }
 
@@ -114,7 +150,20 @@ func main() {
 		os.WriteFile("cfg.txt", []byte(userPath), 0644)
 		showSongs(list)
 	})
-	playButton := widget.NewButton("Play Song", func() {
+
+	iconPlay = canvas.NewImageFromResource(loadResourceFromPath("icons/icons8-play-button-100.png"))
+	iconPlay.FillMode = canvas.ImageFillContain
+	iconPlay.SetMinSize(fyne.NewSize(64, 64))
+
+	iconPause = canvas.NewImageFromResource(loadResourceFromPath("icons/icons8-pause-button-100.png"))
+	iconPause.FillMode = canvas.ImageFillContain
+	iconPause.SetMinSize(fyne.NewSize(64, 64))
+
+	iconStop = canvas.NewImageFromResource(loadResourceFromPath("icons/icons8-stop-squared-100.png"))
+	iconStop.FillMode = canvas.ImageFillContain
+	iconStop.SetMinSize(fyne.NewSize(64, 64))
+
+	playButton := widget.NewButtonWithIcon("", iconPlay.Resource, func() {
 		var songToPlay string
 		if userSong != "" {
 			songToPlay = userSong
@@ -124,6 +173,12 @@ func main() {
 		}
 		selectedTrack = filepath.Join(basePath, songToPlay+".mp3")
 		go playSong()
+	})
+	stopButton := widget.NewButtonWithIcon("", iconStop.Resource, func() {
+		cancelSong()
+	})
+	pauseOrResumeButton := widget.NewButtonWithIcon("", iconPause.Resource, func() {
+		pauseOrResume()
 	})
 
 	listScroll := container.NewVScroll(list)
@@ -137,6 +192,8 @@ func main() {
 		widget.NewLabel("Lista piosenek:"),
 		listScroll,
 		playButton,
+		pauseOrResumeButton,
+		stopButton,
 	)
 
 	w.SetContent(content)
