@@ -125,7 +125,6 @@ func main() {
 	a.SetIcon(r)
 	w := a.NewWindow("Music player")
 	w.Resize(fyne.NewSize(400, 300))
-	w.SetFixedSize(true)
 	background := canvas.NewImageFromFile("background/background.png")
 	background.FillMode = canvas.ImageFillStretch
 	background.SetMinSize(fyne.NewSize(400, 300))
