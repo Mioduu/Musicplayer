@@ -12,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -124,10 +125,16 @@ func main() {
 	r, _ := fyne.LoadResourceFromPath("icons/ic_launcher.ico")
 	a.SetIcon(r)
 	w := a.NewWindow("Music player")
-	w.Resize(fyne.NewSize(400, 300))
-	background := canvas.NewImageFromFile("background/background.png")
+	w.Resize(fyne.NewSize(700, 550))
+	data, err := os.ReadFile("background/background.png")
+	if err != nil {
+		fmt.Println("Błąd ładowania obrazu")
+
+	}
+	res := fyne.NewStaticResource("background.png", data)
+	background := canvas.NewImageFromResource(res)
 	background.FillMode = canvas.ImageFillStretch
-	background.SetMinSize(fyne.NewSize(400, 300))
+	w.SetFixedSize(true)
 	label := widget.NewLabelWithStyle("Music Player", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	title := container.NewCenter(label)
 	entry := widget.NewEntry()
@@ -191,14 +198,13 @@ func main() {
 	})
 
 	rect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
-	rect.SetMinSize(fyne.NewSize(250, 120))
+	rect.SetMinSize(fyne.NewSize(250, 235))
 
 	listScroll := container.NewVScroll(list)
-	listScroll.SetMinSize(fyne.NewSize(250, 120))
-
+	listScroll.SetMinSize(fyne.NewSize(250, 235))
 	listBg := container.NewStack(rect, listScroll)
-
-	content := container.NewStack(
+	spacer := layout.NewSpacer()
+	grid := container.NewGridWrap(fyne.NewSize(700, 550), container.NewStack(
 		background,
 		container.NewVBox(
 			title,
@@ -207,12 +213,14 @@ func main() {
 			dirButton,
 			songListCentered,
 			listBg,
+			spacer,
 			playButton,
 			pauseOrResumeButton,
 			stopButton,
 		),
-	)
+	))
 
-	w.SetContent(content)
+	w.SetContent(grid)
+	fmt.Println("Rozmiar:", background.Size())
 	w.ShowAndRun()
 }
