@@ -153,6 +153,7 @@ func main() {
 	)
 	list.OnSelected = func(id widget.ListItemID) {
 		userSong = songs[id]
+		fmt.Println("Id piosenki: ", songs[id])
 	}
 	checkSavedDir := widget.NewButton("Check last dir", func() {
 		checkDir(entry)
@@ -201,13 +202,18 @@ func main() {
 	})
 	pauseOrResumeButton.Resize(fyne.NewSize(64, 64))
 
+	volumeSlider := widget.NewSlider(-5, 0)
+	volumeSlider.Orientation = widget.Vertical
+	volumeSlider.Value = 0
+	volumeSlider.Step = 0.1
+
 	playWrapped := container.NewGridWrap(fyne.NewSize(64, 64), playButton)
 	pauseWrapped := container.NewGridWrap(fyne.NewSize(64, 64), pauseOrResumeButton)
 	stopWrapped := container.NewGridWrap(fyne.NewSize(64, 64), stopButton)
+	volumeSliderWrapped := container.NewGridWrap(fyne.NewSize(23, 120), volumeSlider)
 
-	volumeSlider := widget.NewSlider(-5, 0)
-	volumeSlider.Value = 0
-	volumeSlider.Step = 0.1
+	sliderRect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
+	sliderRect.SetMinSize(fyne.NewSize(23, 120))
 
 	volumeSlider.OnChanged = func(vol float64) {
 		if volume == nil {
@@ -226,14 +232,15 @@ func main() {
 	listBg := container.NewStack(rect, listScroll)
 	spacer := layout.NewSpacer()
 
-	buttonsRow := container.NewHBox(
-		layout.NewSpacer(),
-		playWrapped,
-		layout.NewSpacer(),
-		pauseWrapped,
-		layout.NewSpacer(),
-		stopWrapped,
-		layout.NewSpacer(),
+	bottomBar := container.NewBorder(
+		nil, nil, nil, container.NewStack(sliderRect, volumeSliderWrapped),
+		container.NewHBox(
+			layout.NewSpacer(),
+			playWrapped,
+			pauseWrapped,
+			stopWrapped,
+			layout.NewSpacer(),
+		),
 	)
 
 	grid := container.NewGridWrap(fyne.NewSize(700, 550), container.NewStack(
@@ -246,8 +253,7 @@ func main() {
 			songListCentered,
 			listBg,
 			spacer,
-			volumeSlider,
-			buttonsRow,
+			bottomBar,
 		),
 	))
 
