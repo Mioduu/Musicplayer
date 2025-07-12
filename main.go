@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"os"
 	"path/filepath"
 	"strings"
@@ -119,13 +120,20 @@ func showSongs(list *widget.List) {
 
 func main() {
 	a := app.New()
+	a.Settings().SetTheme(&LofiTheme{})
 	w := a.NewWindow("Music player")
-	w.Resize(fyne.NewSize(600, 400))
-
-	label := widget.NewLabel("Music player")
-
+	w.Resize(fyne.NewSize(400, 300))
+	w.SetFixedSize(true)
+	background := canvas.NewImageFromFile("background/background.png")
+	background.FillMode = canvas.ImageFillStretch
+	background.SetMinSize(fyne.NewSize(400, 300))
+	label := widget.NewLabelWithStyle("Music Player", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	title := container.NewCenter(label)
 	entry := widget.NewEntry()
 	entry.SetPlaceHolder("Podaj patha do folderu z piosenkami")
+
+	songList := widget.NewLabelWithStyle("Song list:", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	songListCentered := container.NewCenter(songList)
 
 	list := widget.NewList(
 		func() int { return len(songs) },
@@ -181,19 +189,27 @@ func main() {
 		pauseOrResume()
 	})
 
-	listScroll := container.NewVScroll(list)
-	listScroll.SetMinSize(fyne.NewSize(300, 200))
+	rect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
+	rect.SetMinSize(fyne.NewSize(250, 120))
 
-	content := container.NewVBox(
-		label,
-		entry,
-		checkSavedDir,
-		dirButton,
-		widget.NewLabel("Lista piosenek:"),
-		listScroll,
-		playButton,
-		pauseOrResumeButton,
-		stopButton,
+	listScroll := container.NewVScroll(list)
+	listScroll.SetMinSize(fyne.NewSize(250, 120))
+
+	listBg := container.NewStack(rect, listScroll)
+
+	content := container.NewStack(
+		background,
+		container.NewVBox(
+			title,
+			entry,
+			checkSavedDir,
+			dirButton,
+			songListCentered,
+			listBg,
+			playButton,
+			pauseOrResumeButton,
+			stopButton,
+		),
 	)
 
 	w.SetContent(content)
