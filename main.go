@@ -121,6 +121,8 @@ func showSongs(list *widget.List) {
 func main() {
 	a := app.New()
 	a.Settings().SetTheme(&LofiTheme{})
+	r, _ := fyne.LoadResourceFromPath("icons/ic_launcher.ico")
+	a.SetIcon(r)
 	w := a.NewWindow("Music player")
 	w.Resize(fyne.NewSize(400, 300))
 	w.SetFixedSize(true)
