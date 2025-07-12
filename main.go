@@ -33,6 +33,7 @@ var ctrl *beep.Ctrl
 var iconPlay *canvas.Image
 var iconPause *canvas.Image
 var iconStop *canvas.Image
+var volume *effects.Volume
 
 func loadResourceFromPath(path string) fyne.Resource {
 	data, err := os.ReadFile(path)
@@ -66,7 +67,7 @@ func playSong() {
 
 	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 	ctrl = &beep.Ctrl{Streamer: streamer, Paused: false}
-	volume := &effects.Volume{
+	volume = &effects.Volume{
 		Streamer: ctrl,
 		Base:     2,
 		Volume:   -2,
@@ -190,20 +191,51 @@ func main() {
 		selectedTrack = filepath.Join(basePath, songToPlay+".mp3")
 		go playSong()
 	})
+	playButton.Resize(fyne.NewSize(64, 64))
 	stopButton := widget.NewButtonWithIcon("", iconStop.Resource, func() {
 		cancelSong()
 	})
+	stopButton.Resize(fyne.NewSize(64, 64))
 	pauseOrResumeButton := widget.NewButtonWithIcon("", iconPause.Resource, func() {
 		pauseOrResume()
 	})
+	pauseOrResumeButton.Resize(fyne.NewSize(64, 64))
+
+	playWrapped := container.NewGridWrap(fyne.NewSize(64, 64), playButton)
+	pauseWrapped := container.NewGridWrap(fyne.NewSize(64, 64), pauseOrResumeButton)
+	stopWrapped := container.NewGridWrap(fyne.NewSize(64, 64), stopButton)
+
+	volumeSlider := widget.NewSlider(-5, 0)
+	volumeSlider.Value = 0
+	volumeSlider.Step = 0.1
+
+	volumeSlider.OnChanged = func(vol float64) {
+		if volume == nil {
+			return
+		}
+		speaker.Lock()
+		volume.Volume = vol
+		speaker.Unlock()
+	}
 
 	rect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
-	rect.SetMinSize(fyne.NewSize(250, 235))
+	rect.SetMinSize(fyne.NewSize(250, 215))
 
 	listScroll := container.NewVScroll(list)
-	listScroll.SetMinSize(fyne.NewSize(250, 235))
+	listScroll.SetMinSize(fyne.NewSize(250, 215))
 	listBg := container.NewStack(rect, listScroll)
 	spacer := layout.NewSpacer()
+
+	buttonsRow := container.NewHBox(
+		layout.NewSpacer(),
+		playWrapped,
+		layout.NewSpacer(),
+		pauseWrapped,
+		layout.NewSpacer(),
+		stopWrapped,
+		layout.NewSpacer(),
+	)
+
 	grid := container.NewGridWrap(fyne.NewSize(700, 550), container.NewStack(
 		background,
 		container.NewVBox(
@@ -214,9 +246,8 @@ func main() {
 			songListCentered,
 			listBg,
 			spacer,
-			playButton,
-			pauseOrResumeButton,
-			stopButton,
+			volumeSlider,
+			buttonsRow,
 		),
 	))
 
