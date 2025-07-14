@@ -12,7 +12,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -34,6 +33,7 @@ var iconPlay *canvas.Image
 var iconPause *canvas.Image
 var iconStop *canvas.Image
 var volume *effects.Volume
+var stopTicker chan struct{}
 
 func loadResourceFromPath(path string) fyne.Resource {
 	data, err := os.ReadFile(path)
@@ -53,30 +53,65 @@ func pauseOrResume() {
 	}
 }
 
-func playSong() {
-	f, err := os.Open(selectedTrack)
-	if err != nil {
-		panic(err)
-	}
-	streamer, format, err := mp3.Decode(f)
-	if err != nil {
-		panic(err)
-	}
-	currentStreamer = streamer
-	defer streamer.Close()
+func playSong(timeLabel *widget.Label, songLabel *widget.Label) {
+	go func() {
+		if stopTicker != nil {
+			close(stopTicker)
+		}
 
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-	ctrl = &beep.Ctrl{Streamer: streamer, Paused: false}
-	volume = &effects.Volume{
-		Streamer: ctrl,
-		Base:     2,
-		Volume:   -2,
-		Silent:   false,
-	}
-	speaker.Play(volume)
+		stopTicker = make(chan struct{})
 
-	select {}
+		f, err := os.Open(selectedTrack)
+		if err != nil {
+			fmt.Println("Błąd otwierania:", err)
+			return
+		}
+		streamer, format, err := mp3.Decode(f)
+		if err != nil {
+			fmt.Println("Błąd dekodowania:", err)
+			return
+		}
 
+		currentStreamer = streamer
+
+		speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+		ctrl = &beep.Ctrl{Streamer: streamer, Paused: false}
+		volume = &effects.Volume{
+			Streamer: ctrl,
+			Base:     2,
+			Volume:   -2,
+			Silent:   false,
+		}
+
+		durationInSeconds := float64(streamer.Len()) / float64(format.SampleRate)
+		totalMin := int(durationInSeconds) / 60
+		totalSec := int(durationInSeconds) % 60
+
+		songLabel.SetText(fmt.Sprintf("Now playing: %s", userSong))
+
+		go func() {
+			ticker := time.NewTicker(time.Millisecond * 500)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ticker.C:
+					if currentStreamer == nil {
+						return
+					}
+					pos := currentStreamer.Position()
+					curSec := float64(pos) / float64(format.SampleRate)
+					curMin := int(curSec) / 60
+					curSecInt := int(curSec) % 60
+
+					timeLabel.SetText(fmt.Sprintf("Time duration: %d:%02d - %d:%02d", curMin, curSecInt, totalMin, totalSec))
+				case <-stopTicker:
+					return
+				}
+			}
+		}()
+		speaker.Play(volume)
+	}()
 }
 
 func cancelSong() {
@@ -126,7 +161,7 @@ func main() {
 	r, _ := fyne.LoadResourceFromPath("icons/ic_launcher.ico")
 	a.SetIcon(r)
 	w := a.NewWindow("Music player")
-	w.Resize(fyne.NewSize(700, 550))
+	w.Resize(fyne.NewSize(900, 700))
 	data, err := os.ReadFile("background/background.png")
 	if err != nil {
 		fmt.Println("Błąd ładowania obrazu")
@@ -181,6 +216,14 @@ func main() {
 	iconStop.FillMode = canvas.ImageFillContain
 	iconStop.SetMinSize(fyne.NewSize(64, 64))
 
+	songLabel := widget.NewLabel("")
+	timeLabel := widget.NewLabel("")
+	songLabel.Alignment = fyne.TextAlignCenter
+	timeLabel.Alignment = fyne.TextAlignCenter
+
+	songLabel.TextStyle = fyne.TextStyle{Bold: true}
+	timeLabel.TextStyle = fyne.TextStyle{Bold: true}
+
 	playButton := widget.NewButtonWithIcon("", iconPlay.Resource, func() {
 		var songToPlay string
 		if userSong != "" {
@@ -190,7 +233,7 @@ func main() {
 			return
 		}
 		selectedTrack = filepath.Join(basePath, songToPlay+".mp3")
-		go playSong()
+		playSong(timeLabel, songLabel)
 	})
 	playButton.Resize(fyne.NewSize(64, 64))
 	stopButton := widget.NewButtonWithIcon("", iconStop.Resource, func() {
@@ -230,20 +273,62 @@ func main() {
 	listScroll := container.NewVScroll(list)
 	listScroll.SetMinSize(fyne.NewSize(250, 215))
 	listBg := container.NewStack(rect, listScroll)
-	spacer := layout.NewSpacer()
 
-	bottomBar := container.NewBorder(
-		nil, nil, nil, container.NewStack(sliderRect, volumeSliderWrapped),
-		container.NewHBox(
-			layout.NewSpacer(),
-			playWrapped,
-			pauseWrapped,
-			stopWrapped,
-			layout.NewSpacer(),
-		),
+	labelsFixed := container.NewWithoutLayout(songLabel, timeLabel)
+
+	volumeWithBg := container.NewStack(
+		sliderRect,
+		volumeSliderWrapped,
 	)
 
-	grid := container.NewGridWrap(fyne.NewSize(700, 550), container.NewStack(
+	// Przyciski
+	wWidth := float32(900)
+	wHeight := float32(700)
+	btnSize := float32(64)
+	btnMarginBottom := float32(10)
+	buttonsCount := 3
+	buttonsSpacing := float32(36)
+	totalButtonsWidth := btnSize*float32(buttonsCount) + buttonsSpacing*float32(buttonsCount-1)
+	buttonsStartX := (wWidth - totalButtonsWidth) / 2
+	buttonsY := wHeight - btnSize - btnMarginBottom
+
+	//Volume Bar
+	volWidth := float32(23)
+	volHeight := float32(120)
+	volMargin := float32(10)
+	volX := wWidth - volWidth - volMargin
+	volY := wHeight - volHeight - volMargin
+	labelsHeight := float32(25)
+	labelsWidth := float32(300)
+	labelsX := (wWidth-labelsWidth)/2 + 150
+	labelsSpacingBetween := float32(4)
+	timeLabelY := buttonsY - labelsHeight*2 - labelsSpacingBetween
+	songLabelY := buttonsY - labelsHeight - labelsSpacingBetween/2
+
+	// GUI
+	playWrapped.Resize(fyne.NewSize(btnSize, btnSize))
+	playWrapped.Move(fyne.NewPos(buttonsStartX, buttonsY))
+
+	pauseWrapped.Resize(fyne.NewSize(btnSize, btnSize))
+	pauseWrapped.Move(fyne.NewPos(buttonsStartX+btnSize+buttonsSpacing, buttonsY))
+
+	stopWrapped.Resize(fyne.NewSize(btnSize, btnSize))
+	stopWrapped.Move(fyne.NewPos(buttonsStartX+(btnSize+buttonsSpacing)*2, buttonsY))
+
+	volumeWithBg.Move(fyne.NewPos(volX, volY))
+	volumeWithBg.Resize(fyne.NewSize(volWidth, volHeight))
+
+	timeLabel.Move(fyne.NewPos(labelsX, timeLabelY))
+	songLabel.Move(fyne.NewPos(labelsX, songLabelY))
+
+	controlsFixed := container.NewWithoutLayout(
+		playWrapped,
+		pauseWrapped,
+		stopWrapped,
+		volumeWithBg,
+	)
+
+	grid := container.NewGridWrap(fyne.NewSize(890, 700), container.NewStack(
 		background,
 		container.NewVBox(
 			title,
@@ -252,12 +337,15 @@ func main() {
 			dirButton,
 			songListCentered,
 			listBg,
-			spacer,
-			bottomBar,
 		),
 	))
 
-	w.SetContent(grid)
+	w.SetContent(container.NewStack(
+		background,
+		grid,
+		labelsFixed,
+		controlsFixed,
+	))
 	fmt.Println("Rozmiar:", background.Size())
 	w.ShowAndRun()
 }
