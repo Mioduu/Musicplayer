@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"musicplayer/player"
 	"musicplayer/ui"
 
 	"fyne.io/fyne/v2"
@@ -30,6 +31,7 @@ func main() {
 	songListLabel := ui.MakeSongListLabel()
 
 	songList, songs := ui.MakeSongList()
+	player.SongListPointer = songs
 
 	entryButtons := ui.MakeEntryButtons(entry, songList, songs)
 

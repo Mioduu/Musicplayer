@@ -51,9 +51,9 @@ func MakeSongList() (*widget.List, *[]string) {
 
 func MakeSongListUI(list *widget.List) *fyne.Container {
 	rect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
-	rect.SetMinSize(fyne.NewSize(250, 215))
+	rect.SetMinSize(fyne.NewSize(250, 275))
 	listScroll := container.NewVScroll(list)
-	listScroll.SetMinSize(fyne.NewSize(250, 215))
+	listScroll.SetMinSize(fyne.NewSize(250, 275))
 	return container.NewStack(rect, listScroll)
 }
 
@@ -116,6 +116,13 @@ func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label) *fyne.Contai
 	pauseButton := widget.NewButtonWithIcon("", icons.Pause.Resource, func() {
 		player.PauseOrResume()
 	})
+	loopStatus := widget.NewLabel("🔁 Loop: OFF")
+	loopButton := widget.NewButtonWithIcon("", icons.Loop.Resource, func() {
+		player.IsLooping = !player.IsLooping
+		loopStatus.SetText(fmt.Sprintf("🔁 Loop: %s", map[bool]string{true: "ON", false: "OFF"}[player.IsLooping]))
+		player.CancelSong()
+		player.PlaySong(timeLabel, songLabel)
+	})
 
 	volumeSlider := widget.NewSlider(-5, 0)
 	volumeSlider.Orientation = widget.Vertical
@@ -133,6 +140,7 @@ func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label) *fyne.Contai
 	playWrapped := container.NewGridWrap(fyne.NewSize(64, 64), playButton)
 	pauseWrapped := container.NewGridWrap(fyne.NewSize(64, 64), pauseButton)
 	stopWrapped := container.NewGridWrap(fyne.NewSize(64, 64), stopButton)
+	loopWrapped := container.NewGridWrap(fyne.NewSize(64, 64), loopButton)
 
 	sliderRect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
 	sliderRect.SetMinSize(fyne.NewSize(23, 120))
@@ -152,13 +160,15 @@ func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label) *fyne.Contai
 	volX := wWidth - 23 - 10
 	volY := wHeight - 120 - 10
 
-	playWrapped.Move(fyne.NewPos(buttonsStartX, buttonsY))
-	pauseWrapped.Move(fyne.NewPos(buttonsStartX+btnSize+buttonsSpacing, buttonsY))
-	stopWrapped.Move(fyne.NewPos(buttonsStartX+(btnSize+buttonsSpacing)*2, buttonsY))
+	playWrapped.Move(fyne.NewPos(buttonsStartX-20, buttonsY))
+	pauseWrapped.Move(fyne.NewPos(buttonsStartX+btnSize+buttonsSpacing-20, buttonsY))
+	stopWrapped.Move(fyne.NewPos(buttonsStartX+(btnSize+buttonsSpacing)*2-20, buttonsY))
+	loopWrapped.Move(fyne.NewPos(buttonsStartX+(btnSize+buttonsSpacing)*3-20, buttonsY))
+	loopStatus.Move(fyne.NewPos(buttonsStartX+(btnSize+buttonsSpacing)*3-33, buttonsY-25))
 	volumeWithBg.Move(fyne.NewPos(volX, volY))
 	volumeWithBg.Resize(fyne.NewSize(23, 120))
 
-	return container.NewWithoutLayout(playWrapped, pauseWrapped, stopWrapped, volumeWithBg)
+	return container.NewWithoutLayout(playWrapped, pauseWrapped, stopWrapped, loopWrapped, volumeWithBg, loopStatus)
 }
 
 func MakeLabels(songLabel, timeLabel *widget.Label) *fyne.Container {
@@ -170,8 +180,8 @@ func MakeLabels(songLabel, timeLabel *widget.Label) *fyne.Container {
 	buttonsY := float32(700) - btnSize - btnMarginBottom
 	labelsWidth := float32(300)
 	labelsX := (wWidth-labelsWidth)/2 + 150
-	timeLabelY := buttonsY - labelsHeight*2 - labelsSpacing
-	songLabelY := buttonsY - labelsHeight - labelsSpacing/2
+	timeLabelY := buttonsY - labelsHeight*3 - labelsSpacing
+	songLabelY := buttonsY - labelsHeight*2 - labelsSpacing/2
 
 	timeLabel.Move(fyne.NewPos(labelsX, timeLabelY))
 	songLabel.Move(fyne.NewPos(labelsX, songLabelY))

@@ -11,6 +11,7 @@ type Icons struct {
 	Play  *canvas.Image
 	Pause *canvas.Image
 	Stop  *canvas.Image
+	Loop  *canvas.Image
 }
 
 func LoadIcons() *Icons {
@@ -18,6 +19,7 @@ func LoadIcons() *Icons {
 		Play:  load("assets/icons/icons8-play-button-100.png"),
 		Pause: load("assets/icons/icons8-pause-button-100.png"),
 		Stop:  load("assets/icons/icons8-stop-squared-100.png"),
+		Loop:  load("assets/icons/icons8-loop-100.png"),
 	}
 }
 
