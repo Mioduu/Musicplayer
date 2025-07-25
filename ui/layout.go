@@ -101,14 +101,14 @@ func MakeEntryButtons(entry *widget.Entry, list *widget.List, songs *[]string) [
 	return [2]*widget.Button{checkSavedDir, dirButton}
 }
 
-func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label) *fyne.Container {
+func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) *fyne.Container {
 	playButton := widget.NewButtonWithIcon("", icons.Play.Resource, func() {
 		if player.UserSong == "" {
 			fmt.Println("Nie wybrano żadnej piosenki")
 			return
 		}
 		player.SelectedTrack = filepath.Join(player.BasePath, player.UserSong+".mp3")
-		player.PlaySong(timeLabel, songLabel)
+		player.PlaySong(timeLabel, songLabel, seekSlider)
 	})
 	stopButton := widget.NewButtonWithIcon("", icons.Stop.Resource, func() {
 		player.CancelSong()
@@ -121,7 +121,7 @@ func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label) *fyne.Contai
 		player.IsLooping = !player.IsLooping
 		loopStatus.SetText(fmt.Sprintf("🔁 Loop: %s", map[bool]string{true: "ON", false: "OFF"}[player.IsLooping]))
 		player.CancelSong()
-		player.PlaySong(timeLabel, songLabel)
+		player.PlaySong(timeLabel, songLabel, seekSlider)
 	})
 
 	volumeSlider := widget.NewSlider(-5, 0)
@@ -168,7 +168,10 @@ func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label) *fyne.Contai
 	volumeWithBg.Move(fyne.NewPos(volX, volY))
 	volumeWithBg.Resize(fyne.NewSize(23, 120))
 
-	return container.NewWithoutLayout(playWrapped, pauseWrapped, stopWrapped, loopWrapped, volumeWithBg, loopStatus)
+	seekSlider.Resize(fyne.NewSize(300, 20))
+	seekSlider.Move(fyne.NewPos((wWidth-300)/2, buttonsY-20))
+
+	return container.NewWithoutLayout(playWrapped, pauseWrapped, stopWrapped, loopWrapped, volumeWithBg, loopStatus, seekSlider)
 }
 
 func MakeLabels(songLabel, timeLabel *widget.Label) *fyne.Container {

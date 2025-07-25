@@ -41,7 +41,10 @@ func main() {
 	timeLabel := widget.NewLabel("")
 	ui.StyleLabels(songLabel, timeLabel)
 
-	controls := ui.MakeControls(playerIcons, timeLabel, songLabel)
+	seekSlider := widget.NewSlider(0, 100)
+	seekSlider.Step = 1
+
+	controls := ui.MakeControls(playerIcons, timeLabel, songLabel, seekSlider)
 
 	labels := ui.MakeLabels(songLabel, timeLabel)
 

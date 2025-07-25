@@ -27,9 +27,10 @@ var (
 	UserSong      string
 	SelectedTrack string
 	BasePath      string
+	isSeeking     bool
 )
 
-func PlayNextSong(timeLabel, songLabel *widget.Label) {
+func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) {
 	currentIndex := -1
 	for i, name := range *SongListPointer {
 		if name == UserSong {
@@ -41,14 +42,14 @@ func PlayNextSong(timeLabel, songLabel *widget.Label) {
 		nextIndex := (currentIndex + 1) % len(*SongListPointer)
 		UserSong = (*SongListPointer)[nextIndex]
 		SelectedTrack = filepath.Join(BasePath, UserSong+".mp3")
-		PlaySong(timeLabel, songLabel)
+		PlaySong(timeLabel, songLabel, seekSlider)
 	} else {
 		fmt.Println("Nie znaleziono obecnej piosenki w liście")
 	}
 
 }
 
-func PlaySong(timeLabel, songLabel *widget.Label) {
+func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) {
 	go func() {
 		if StopTicker != nil {
 			close(StopTicker)
@@ -87,6 +88,18 @@ func PlaySong(timeLabel, songLabel *widget.Label) {
 
 		songLabel.SetText(fmt.Sprintf("Now playing: %s", UserSong))
 
+		seekSlider.Min = 0
+		seekSlider.Max = float64(streamer.Len())
+		seekSlider.Value = 0
+
+		seekSlider.OnChanged = func(value float64) {
+			if !isSeeking && CurrentStreamer != nil {
+				speaker.Lock()
+				_ = CurrentStreamer.Seek(int(value))
+				speaker.Unlock()
+			}
+		}
+
 		go func() {
 			ticker := time.NewTicker(500 * time.Millisecond)
 			defer ticker.Stop()
@@ -101,12 +114,15 @@ func PlaySong(timeLabel, songLabel *widget.Label) {
 					curMin := int(cur) / 60
 					curSec := int(cur) % 60
 					timeLabel.SetText(fmt.Sprintf("Time duration: %d:%02d - %d:%02d", curMin, curSec, totalMin, totalSec))
+					isSeeking = true
+					seekSlider.SetValue(float64(CurrentStreamer.Position()))
+					isSeeking = false
 
 					if pos >= CurrentStreamer.Len() {
 						if IsLooping {
-							PlaySong(timeLabel, songLabel)
+							PlaySong(timeLabel, songLabel, seekSlider)
 						} else {
-							PlayNextSong(timeLabel, songLabel)
+							PlayNextSong(timeLabel, songLabel, seekSlider)
 						}
 						return
 					}
@@ -135,9 +151,9 @@ func CancelSong() {
 	}
 }
 
-func LoopSong(timeLabel, songLabel *widget.Label) {
+func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) {
 	IsLooping = !IsLooping
 	CancelSong()
 	SelectedTrack = filepath.Join(BasePath, UserSong+".mp3")
-	PlaySong(timeLabel, songLabel)
+	PlaySong(timeLabel, songLabel, seekSlider)
 }
