@@ -16,6 +16,8 @@ import (
 	"github.com/faiface/beep/speaker"
 )
 
+var currVolume float64
+
 func LoadBackground(path string) *canvas.Image {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -108,7 +110,7 @@ func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider *
 			return
 		}
 		player.SelectedTrack = filepath.Join(player.BasePath, player.UserSong+".mp3")
-		player.PlaySong(timeLabel, songLabel, seekSlider)
+		player.PlaySong(timeLabel, songLabel, seekSlider, currVolume)
 	})
 	stopButton := widget.NewButtonWithIcon("", icons.Stop.Resource, func() {
 		player.CancelSong()
@@ -121,7 +123,7 @@ func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider *
 		player.IsLooping = !player.IsLooping
 		loopStatus.SetText(fmt.Sprintf("🔁 Loop: %s", map[bool]string{true: "ON", false: "OFF"}[player.IsLooping]))
 		player.CancelSong()
-		player.PlaySong(timeLabel, songLabel, seekSlider)
+		player.PlaySong(timeLabel, songLabel, seekSlider, currVolume)
 	})
 
 	volumeSlider := widget.NewSlider(-5, 0)
@@ -134,6 +136,7 @@ func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider *
 		}
 		speaker.Lock()
 		player.Volume.Volume = vol
+		currVolume = player.Volume.Volume
 		speaker.Unlock()
 	}
 

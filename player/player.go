@@ -30,7 +30,7 @@ var (
 	isSeeking     bool
 )
 
-func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) {
+func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, currVolume float64) {
 	currentIndex := -1
 	for i, name := range *SongListPointer {
 		if name == UserSong {
@@ -42,14 +42,14 @@ func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider)
 		nextIndex := (currentIndex + 1) % len(*SongListPointer)
 		UserSong = (*SongListPointer)[nextIndex]
 		SelectedTrack = filepath.Join(BasePath, UserSong+".mp3")
-		PlaySong(timeLabel, songLabel, seekSlider)
+		PlaySong(timeLabel, songLabel, seekSlider, currVolume)
 	} else {
 		fmt.Println("Nie znaleziono obecnej piosenki w liście")
 	}
 
 }
 
-func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) {
+func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, currVolume float64) {
 	go func() {
 		if StopTicker != nil {
 			close(StopTicker)
@@ -78,7 +78,7 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) {
 		Volume = &effects.Volume{
 			Streamer: Ctrl,
 			Base:     2,
-			Volume:   -2,
+			Volume:   currVolume,
 			Silent:   false,
 		}
 
@@ -120,9 +120,9 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) {
 
 					if pos >= CurrentStreamer.Len() {
 						if IsLooping {
-							PlaySong(timeLabel, songLabel, seekSlider)
+							PlaySong(timeLabel, songLabel, seekSlider, currVolume)
 						} else {
-							PlayNextSong(timeLabel, songLabel, seekSlider)
+							PlayNextSong(timeLabel, songLabel, seekSlider, currVolume)
 						}
 						return
 					}
@@ -151,9 +151,9 @@ func CancelSong() {
 	}
 }
 
-func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) {
+func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, currVolume float64) {
 	IsLooping = !IsLooping
 	CancelSong()
 	SelectedTrack = filepath.Join(BasePath, UserSong+".mp3")
-	PlaySong(timeLabel, songLabel, seekSlider)
+	PlaySong(timeLabel, songLabel, seekSlider, currVolume)
 }
