@@ -30,7 +30,7 @@ var (
 	isSeeking     bool
 )
 
-func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, currVolume float64) {
+func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
 	currentIndex := -1
 	for i, name := range *SongListPointer {
 		if name == UserSong {
@@ -42,14 +42,14 @@ func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider,
 		nextIndex := (currentIndex + 1) % len(*SongListPointer)
 		UserSong = (*SongListPointer)[nextIndex]
 		SelectedTrack = filepath.Join(BasePath, UserSong+".mp3")
-		PlaySong(timeLabel, songLabel, seekSlider, currVolume)
+		PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
 	} else {
 		fmt.Println("Nie znaleziono obecnej piosenki w liście")
 	}
 
 }
 
-func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, currVolume float64) {
+func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
 	go func() {
 		if StopTicker != nil {
 			close(StopTicker)
@@ -78,7 +78,7 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, cur
 		Volume = &effects.Volume{
 			Streamer: Ctrl,
 			Base:     2,
-			Volume:   currVolume,
+			Volume:   volumeSlider.Value,
 			Silent:   false,
 		}
 
@@ -120,9 +120,9 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, cur
 
 					if pos >= CurrentStreamer.Len() {
 						if IsLooping {
-							PlaySong(timeLabel, songLabel, seekSlider, currVolume)
+							PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
 						} else {
-							PlayNextSong(timeLabel, songLabel, seekSlider, currVolume)
+							PlayNextSong(timeLabel, songLabel, seekSlider, volumeSlider)
 						}
 						return
 					}
@@ -151,9 +151,9 @@ func CancelSong() {
 	}
 }
 
-func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, currVolume float64) {
+func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
 	IsLooping = !IsLooping
 	CancelSong()
 	SelectedTrack = filepath.Join(BasePath, UserSong+".mp3")
-	PlaySong(timeLabel, songLabel, seekSlider, currVolume)
+	PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
 }

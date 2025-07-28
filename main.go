@@ -30,10 +30,11 @@ func main() {
 
 	songListLabel := ui.MakeSongListLabel()
 
-	songList, songs := ui.MakeSongList()
+	songList, songs, filtered := ui.MakeSongList()
 	player.SongListPointer = songs
+	searchEntry := ui.MakeSearchEntry(filtered, songs, songList)
 
-	entryButtons := ui.MakeEntryButtons(entry, songList, songs)
+	entryButtons := ui.MakeEntryButtons(entry, songList, songs, filtered)
 
 	playerIcons := ui.LoadIcons()
 
@@ -57,6 +58,7 @@ func main() {
 			entry,
 			entryButtons[0],
 			entryButtons[1],
+			searchEntry,
 			songListLabel,
 			listUI,
 		),
