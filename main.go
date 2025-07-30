@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 
 	"musicplayer/player"
 	"musicplayer/ui"
@@ -20,7 +20,6 @@ func main() {
 
 	w := a.NewWindow("Music player")
 	w.Resize(fyne.NewSize(900, 700))
-	w.SetFixedSize(true)
 
 	background := ui.LoadBackground("assets/background/background.png")
 	title := ui.MakeTitle()
@@ -30,11 +29,12 @@ func main() {
 
 	songListLabel := ui.MakeSongListLabel()
 
-	songList, songs, filtered := ui.MakeSongList()
+	songList, songs := ui.MakeSongList()
 	player.SongListPointer = songs
-	searchEntry := ui.MakeSearchEntry(filtered, songs, songList)
+	ui.LoadSongs(songList, songs)
+	// searchEntry := ui.MakeSearchEntry(filtered, songs, songList)
 
-	entryButtons := ui.MakeEntryButtons(entry, songList, songs, filtered)
+	// entryButtons := ui.MakeEntryButtons(entry, songList, songs, filtered)
 
 	playerIcons := ui.LoadIcons()
 
@@ -51,14 +51,11 @@ func main() {
 
 	listUI := ui.MakeSongListUI(songList)
 
-	grid := container.NewGridWrap(fyne.NewSize(890, 700), container.NewStack(
+	grid := (container.NewStack(
 		background,
 		container.NewVBox(
 			title,
 			entry,
-			entryButtons[0],
-			entryButtons[1],
-			searchEntry,
 			songListLabel,
 			listUI,
 		),
@@ -71,6 +68,6 @@ func main() {
 		controls,
 	))
 
-	fmt.Println("Rozmiar:", background.Size())
+	// fmt.Println("Rozmiar:", background.Size())
 	w.ShowAndRun()
 }

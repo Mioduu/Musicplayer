@@ -13,7 +13,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"github.com/faiface/beep/speaker"
 )
 
 func LoadBackground(path string) *canvas.Image {
@@ -33,45 +32,27 @@ func MakeTitle() *fyne.Container {
 	return container.NewCenter(label)
 }
 
-func MakeSongList() (*widget.List, *[]string, *[]string) {
+func MakeSongList() (*widget.List, *[]string) {
 	songs := &[]string{}
-	filtered := &[]string{}
 	list := widget.NewList(
-		func() int { return len(*filtered) },
+		func() int { return len(*songs) },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
 		func(i widget.ListItemID, o fyne.CanvasObject) {
-			o.(*widget.Label).SetText((*filtered)[i])
+			o.(*widget.Label).SetText((*songs)[i])
 		},
 	)
 	list.OnSelected = func(id widget.ListItemID) {
-		player.UserSong = (*filtered)[id]
-		fmt.Println("Id piosenki:", (*filtered)[id])
+		player.UserSong = (*songs)[id]
+		fmt.Println("Id piosenki:", (*songs)[id])
 	}
-	return list, songs, filtered
-}
-
-func MakeSearchEntry(searchTarget *[]string, fullList *[]string, list *widget.List) *widget.Entry {
-	entry := widget.NewEntry()
-	entry.SetPlaceHolder("Search...")
-
-	entry.OnChanged = func(s string) {
-		*searchTarget = nil
-		query := strings.ToLower(s)
-		for _, song := range *fullList {
-			if strings.Contains(strings.ToLower(song), query) {
-				*searchTarget = append(*searchTarget, song)
-			}
-		}
-		list.Refresh()
-	}
-	return entry
+	return list, songs
 }
 
 func MakeSongListUI(list *widget.List) *fyne.Container {
 	rect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
-	rect.SetMinSize(fyne.NewSize(250, 275))
+	rect.SetMinSize(fyne.NewSize(SONG_BACKGROUND_WIDTH, SONG_BACKGROUND_HEIGHT))
 	listScroll := container.NewVScroll(list)
-	listScroll.SetMinSize(fyne.NewSize(250, 275))
+	listScroll.SetMinSize(fyne.NewSize(SONG_LIST_WIDTH, SONG_LIST_HEIGHT))
 	return container.NewStack(rect, listScroll)
 }
 
@@ -80,134 +61,98 @@ func MakeSongListLabel() *fyne.Container {
 	return container.NewCenter(songList)
 }
 
-func MakeEntryButtons(entry *widget.Entry, list *widget.List, songs *[]string, filtered *[]string) [2]*widget.Button {
-	checkSavedDir := widget.NewButton("Check last dir", func() {
-		_, err := os.Stat("cfg.txt")
-		if os.IsNotExist(err) {
-			os.WriteFile("cfg.txt", []byte(player.UserSong), 0644)
-			player.BasePath = player.UserSong
+func checkLastDir() string {
+	_, err := os.Stat("cfg.txt")
+	if os.IsNotExist(err) {
+		os.WriteFile("cfg.txt", []byte(player.UserSong), 0644)
+		player.BasePath = player.UserSong
+	}
+	data, err := os.ReadFile("cfg.txt")
+	if err != nil {
+		panic(err)
+	}
+	player.BasePath = string(data)
+	return string(data)
+}
+
+func LoadSongs(list *widget.List, songs *[]string) {
+	userPath := checkLastDir()
+	fmt.Println("Userpath: ", userPath)
+	if userPath == "" {
+		fmt.Println("Podaj ścieżke przed sprawdzeniem")
+		return
+	}
+	player.BasePath = userPath
+	os.WriteFile("cfg.txt", []byte(userPath), 0644)
+	listDirectory, err := os.ReadDir(userPath)
+	if err != nil {
+		panic(err)
+	}
+	for _, file := range listDirectory {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".mp3") {
+			name := strings.TrimSuffix(file.Name(), ".mp3")
+			*songs = append(*songs, name)
 		}
-		data, err := os.ReadFile("cfg.txt")
-		if err != nil {
-			panic(err)
-		}
-		entry.SetText(string(data))
-		player.BasePath = string(data)
-	})
-	dirButton := widget.NewButton("Explore directory", func() {
-		userPath := entry.Text
-		if userPath == "" {
-			fmt.Println("Podaj ścieżke przed sprawdzeniem")
-			return
-		}
-		player.BasePath = userPath
-		os.WriteFile("cfg.txt", []byte(userPath), 0644)
-		// Refresh song list
-		*songs = nil
-		listDirectory, err := os.ReadDir(player.BasePath)
-		if err != nil {
-			panic(err)
-		}
-		for _, file := range listDirectory {
-			if !file.IsDir() && strings.HasSuffix(file.Name(), ".mp3") {
-				name := strings.TrimSuffix(file.Name(), ".mp3")
-				*songs = append(*songs, name)
-				*filtered = append(*filtered, name)
-			}
-		}
-		list.Refresh()
-	})
-	return [2]*widget.Button{checkSavedDir, dirButton}
+	}
+	fmt.Println("Songs: ", songs)
+	list.Refresh()
 }
 
 func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) *fyne.Container {
-	volumeSlider := widget.NewSlider(-5, 0)
-	volumeSlider.Min = -5
-	volumeSlider.Max = 0
+	volumeSlider := widget.NewSlider(VOLUME_SLIDER_MIN_DB, VOLUME_SLIDER_MAX_DB)
 	volumeSlider.Value = 0
 	volumeSlider.Step = 0.1
 	volumeSlider.Orientation = widget.Vertical
-	volumeSlider.OnChanged = func(vol float64) {
-		if player.Volume == nil {
-			return
-		}
-		speaker.Lock()
-		player.Volume.Volume = vol
-		speaker.Unlock()
-	}
+	player.ChangeVolume(volumeSlider)
+
 	playButton := widget.NewButtonWithIcon("", icons.Play.Resource, func() {
-		if player.UserSong == "" {
-			fmt.Println("Nie wybrano żadnej piosenki")
-			return
-		}
-		player.SelectedTrack = filepath.Join(player.BasePath, player.UserSong+".mp3")
 		player.PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
 	})
+
 	stopButton := widget.NewButtonWithIcon("", icons.Stop.Resource, func() {
 		player.CancelSong()
 	})
+
 	pauseButton := widget.NewButtonWithIcon("", icons.Pause.Resource, func() {
 		player.PauseOrResume()
 	})
+
 	loopStatus := widget.NewLabel("🔁 Loop: OFF")
+
 	loopButton := widget.NewButtonWithIcon("", icons.Loop.Resource, func() {
-		player.IsLooping = !player.IsLooping
-		loopStatus.SetText(fmt.Sprintf("🔁 Loop: %s", map[bool]string{true: "ON", false: "OFF"}[player.IsLooping]))
-		player.CancelSong()
-		player.PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
+		player.LoopSong(timeLabel, songLabel, seekSlider, volumeSlider, loopStatus)
 	})
 
-	playWrapped := container.NewGridWrap(fyne.NewSize(64, 64), playButton)
-	pauseWrapped := container.NewGridWrap(fyne.NewSize(64, 64), pauseButton)
-	stopWrapped := container.NewGridWrap(fyne.NewSize(64, 64), stopButton)
-	loopWrapped := container.NewGridWrap(fyne.NewSize(64, 64), loopButton)
+	playWrapped := container.NewGridWrap(fyne.NewSize(ICON_MIN_SIZE, ICON_MAX_SIZE), playButton)
+	pauseWrapped := container.NewGridWrap(fyne.NewSize(ICON_MIN_SIZE, ICON_MAX_SIZE), pauseButton)
+	stopWrapped := container.NewGridWrap(fyne.NewSize(ICON_MIN_SIZE, ICON_MAX_SIZE), stopButton)
+	loopWrapped := container.NewGridWrap(fyne.NewSize(ICON_MIN_SIZE, ICON_MAX_SIZE), loopButton)
 
 	sliderRect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
-	sliderRect.SetMinSize(fyne.NewSize(23, 120))
-	volumeSliderWrapped := container.NewGridWrap(fyne.NewSize(23, 120), volumeSlider)
+	sliderRect.SetMinSize(fyne.NewSize(SLIDER_RECT_WIDTH, SLIDER_RECT_HEIGHT))
+	volumeSliderWrapped := container.NewGridWrap(fyne.NewSize(VOLUME_SLIDER_WIDTH, VOLUME_SLIDER_HEIGHT), volumeSlider)
 	volumeWithBg := container.NewStack(sliderRect, volumeSliderWrapped)
 
-	// Pozycjonowanie
-	wWidth := float32(900)
-	wHeight := float32(700)
-	btnSize := float32(64)
-	btnMarginBottom := float32(10)
-	buttonsSpacing := float32(36)
-	buttonsCount := 3
-	totalButtonsWidth := btnSize*float32(buttonsCount) + buttonsSpacing*float32(buttonsCount-1)
-	buttonsStartX := (wWidth - totalButtonsWidth) / 2
-	buttonsY := wHeight - btnSize - btnMarginBottom
-	volX := wWidth - 23 - 10
-	volY := wHeight - 120 - 10
+	playWrapped.Move(fyne.NewPos(BUTTON_START_X-20, BUTTONS_Y))
+	pauseWrapped.Move(fyne.NewPos(BUTTON_START_X+BUTTON_SIZE+BUTTONS_SPACING-20, BUTTONS_Y))
+	stopWrapped.Move(fyne.NewPos(BUTTON_START_X+(BUTTON_SIZE+BUTTONS_SPACING)*2-20, BUTTONS_Y))
+	loopWrapped.Move(fyne.NewPos(BUTTON_START_X+(BUTTON_SIZE+BUTTONS_SPACING)*3-20, BUTTONS_Y))
+	loopStatus.Move(fyne.NewPos(BUTTON_START_X+(BUTTON_SIZE+BUTTONS_SPACING)*3-33, BUTTONS_Y-25))
+	volumeWithBg.Move(fyne.NewPos(VOLUME_X, VOLUME_Y))
+	volumeWithBg.Resize(fyne.NewSize(VOLUME_SLIDER_WIDTH, VOLUME_SLIDER_HEIGHT))
 
-	playWrapped.Move(fyne.NewPos(buttonsStartX-20, buttonsY))
-	pauseWrapped.Move(fyne.NewPos(buttonsStartX+btnSize+buttonsSpacing-20, buttonsY))
-	stopWrapped.Move(fyne.NewPos(buttonsStartX+(btnSize+buttonsSpacing)*2-20, buttonsY))
-	loopWrapped.Move(fyne.NewPos(buttonsStartX+(btnSize+buttonsSpacing)*3-20, buttonsY))
-	loopStatus.Move(fyne.NewPos(buttonsStartX+(btnSize+buttonsSpacing)*3-33, buttonsY-25))
-	volumeWithBg.Move(fyne.NewPos(volX, volY))
-	volumeWithBg.Resize(fyne.NewSize(23, 120))
-
-	seekSlider.Resize(fyne.NewSize(300, 20))
-	seekSlider.Move(fyne.NewPos((wWidth-300)/2, buttonsY-20))
+	seekSlider.Resize(fyne.NewSize(SEEK_SLIDER_WIDTH, SEEK_SLIDER_HEIGHT))
+	seekSlider.Move(fyne.NewPos((WINDOW_WIDTH-300)/2, BUTTONS_Y-20))
 
 	return container.NewWithoutLayout(playWrapped, pauseWrapped, stopWrapped, loopWrapped, volumeWithBg, loopStatus, seekSlider)
 }
 
 func MakeLabels(songLabel, timeLabel *widget.Label) *fyne.Container {
-	labelsHeight := float32(25)
-	labelsSpacing := float32(4)
-	wWidth := float32(900)
-	btnSize := float32(64)
-	btnMarginBottom := float32(10)
-	buttonsY := float32(700) - btnSize - btnMarginBottom
-	labelsWidth := float32(300)
-	labelsX := (wWidth-labelsWidth)/2 + 150
-	timeLabelY := buttonsY - labelsHeight*3 - labelsSpacing
-	songLabelY := buttonsY - labelsHeight*2 - labelsSpacing/2
+	timeLabelY := LABEL_BUTTONS_Y - LABELS_HEIGHT*3 - LABELS_SPACING
+	songLabelY := LABEL_BUTTONS_Y - LABELS_HEIGHT*2 - LABELS_SPACING/2
 
-	timeLabel.Move(fyne.NewPos(labelsX, timeLabelY))
-	songLabel.Move(fyne.NewPos(labelsX, songLabelY))
+	timeLabel.Move(fyne.NewPos(LABELS_X, timeLabelY))
+	songLabel.Move(fyne.NewPos(LABELS_X, songLabelY))
 
 	return container.NewWithoutLayout(songLabel, timeLabel)
 }

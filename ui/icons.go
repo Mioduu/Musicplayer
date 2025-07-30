@@ -26,6 +26,6 @@ func LoadIcons() *Icons {
 func load(path string) *canvas.Image {
 	icon := canvas.NewImageFromResource(player.LoadResourceFromPath(path))
 	icon.FillMode = canvas.ImageFillContain
-	icon.SetMinSize(fyne.NewSize(64, 64))
+	icon.SetMinSize(fyne.NewSize(ICON_MIN_SIZE, ICON_MAX_SIZE))
 	return icon
 }

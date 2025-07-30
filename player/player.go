@@ -30,6 +30,16 @@ var (
 	isSeeking     bool
 )
 
+func ChangeVolume(volumeSlider *widget.Slider) {
+	volumeSlider.OnChanged = func(vol float64) {
+		if Volume == nil {
+			return
+		}
+		speaker.Lock()
+		Volume.Volume = vol
+		speaker.Unlock()
+	}
+}
 func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
 	currentIndex := -1
 	for i, name := range *SongListPointer {
@@ -50,6 +60,13 @@ func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider,
 }
 
 func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
+	if UserSong == "" {
+		fmt.Println("Nie wybrano żadnej piosenki")
+		return
+	}
+
+	SelectedTrack = filepath.Join(BasePath, UserSong+".mp3")
+
 	go func() {
 		if StopTicker != nil {
 			close(StopTicker)
@@ -151,9 +168,9 @@ func CancelSong() {
 	}
 }
 
-func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
+func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider, loopStatus *widget.Label) {
 	IsLooping = !IsLooping
 	CancelSong()
-	SelectedTrack = filepath.Join(BasePath, UserSong+".mp3")
+	loopStatus.SetText(fmt.Sprintf("🔁 Loop: %s", map[bool]string{true: "ON", false: "OFF"}[IsLooping]))
 	PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
 }
