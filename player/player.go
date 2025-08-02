@@ -105,9 +105,7 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, vol
 
 		songLabel.SetText(fmt.Sprintf("Now playing: %s", UserSong))
 
-		seekSlider.Min = 0
 		seekSlider.Max = float64(streamer.Len())
-		seekSlider.Value = 0
 
 		seekSlider.OnChanged = func(value float64) {
 			if !isSeeking && CurrentStreamer != nil {
@@ -168,9 +166,9 @@ func CancelSong() {
 	}
 }
 
-func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider, loopStatus *widget.Label) {
+func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
 	IsLooping = !IsLooping
 	CancelSong()
-	loopStatus.SetText(fmt.Sprintf("🔁 Loop: %s", map[bool]string{true: "ON", false: "OFF"}[IsLooping]))
+	// loopStatus.SetText(fmt.Sprintf("🔁 Loop: %s", map[bool]string{true: "ON", false: "OFF"}[IsLooping]))
 	PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
 }

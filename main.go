@@ -1,8 +1,7 @@
 package main
 
 import (
-	// "fmt"
-
+	"fmt"
 	"musicplayer/player"
 	"musicplayer/ui"
 
@@ -21,7 +20,6 @@ func main() {
 	w := a.NewWindow("Music player")
 	w.Resize(fyne.NewSize(900, 700))
 
-	background := ui.LoadBackground("assets/background/background.png")
 	title := ui.MakeTitle()
 
 	entry := widget.NewEntry()
@@ -42,31 +40,48 @@ func main() {
 	timeLabel := widget.NewLabel("")
 	ui.StyleLabels(songLabel, timeLabel)
 
-	seekSlider := widget.NewSlider(0, 100)
-	seekSlider.Step = 1
+	seekSlider, volumeSlider := ui.MakeSliders()
+	toolbarcontrol := ui.MakeNewToolbar(playerIcons, timeLabel, songLabel, seekSlider, volumeSlider)
 
-	controls := ui.MakeControls(playerIcons, timeLabel, songLabel, seekSlider)
-
-	labels := ui.MakeLabels(songLabel, timeLabel)
-
+	toolbarContainer := container.NewCenter(toolbarcontrol)
+	volumeContainer := container.NewStack(volumeSlider)
 	listUI := ui.MakeSongListUI(songList)
 
-	grid := (container.NewStack(
-		background,
+	// spacer := layout.NewSpacer()
+
+	bottomBar := container.NewBorder(
+		nil,
+		nil,
+		nil,
+		volumeContainer,
 		container.NewVBox(
+			songLabel,
+			timeLabel,
+			seekSlider,
+			toolbarContainer,
+		),
+	)
+
+	grid := container.NewBorder(
+		nil,       // Top
+		bottomBar, // Bottom
+		nil,       // Left
+		nil,       // Right
+		container.NewVBox( // Center
 			title,
 			entry,
 			songListLabel,
 			listUI,
 		),
-	))
+	)
 
 	w.SetContent(container.NewStack(
-		background,
 		grid,
-		labels,
-		controls,
 	))
+
+	fmt.Println("seekSlider MinSize:", seekSlider.MinSize())
+	fmt.Println("toolbar MinSize:", toolbarContainer.MinSize())
+	fmt.Println("volumeSlider MinSize:", volumeSlider.MinSize())
 
 	// fmt.Println("Rozmiar:", background.Size())
 	w.ShowAndRun()

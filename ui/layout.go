@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image/color"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"musicplayer/player"
@@ -14,18 +13,6 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
-
-func LoadBackground(path string) *canvas.Image {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		fmt.Println("Błąd ładowania obrazu")
-		return canvas.NewImageFromImage(nil)
-	}
-	res := fyne.NewStaticResource(filepath.Base(path), data)
-	bg := canvas.NewImageFromResource(res)
-	bg.FillMode = canvas.ImageFillStretch
-	return bg
-}
 
 func MakeTitle() *fyne.Container {
 	label := widget.NewLabelWithStyle("Music Player", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
@@ -98,63 +85,36 @@ func LoadSongs(list *widget.List, songs *[]string) {
 	list.Refresh()
 }
 
-func MakeControls(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider *widget.Slider) *fyne.Container {
+func MakeSliders() (*widget.Slider, *widget.Slider) {
+	seekSlider := widget.NewSlider(0, 100)
+	seekSlider.Step = 1
+	seekSlider.Value = 0
+
 	volumeSlider := widget.NewSlider(VOLUME_SLIDER_MIN_DB, VOLUME_SLIDER_MAX_DB)
 	volumeSlider.Value = 0
 	volumeSlider.Step = 0.1
 	volumeSlider.Orientation = widget.Vertical
 	player.ChangeVolume(volumeSlider)
 
-	playButton := widget.NewButtonWithIcon("", icons.Play.Resource, func() {
-		player.PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
-	})
-
-	stopButton := widget.NewButtonWithIcon("", icons.Stop.Resource, func() {
-		player.CancelSong()
-	})
-
-	pauseButton := widget.NewButtonWithIcon("", icons.Pause.Resource, func() {
-		player.PauseOrResume()
-	})
-
-	loopStatus := widget.NewLabel("🔁 Loop: OFF")
-
-	loopButton := widget.NewButtonWithIcon("", icons.Loop.Resource, func() {
-		player.LoopSong(timeLabel, songLabel, seekSlider, volumeSlider, loopStatus)
-	})
-
-	playWrapped := container.NewGridWrap(fyne.NewSize(ICON_MIN_SIZE, ICON_MAX_SIZE), playButton)
-	pauseWrapped := container.NewGridWrap(fyne.NewSize(ICON_MIN_SIZE, ICON_MAX_SIZE), pauseButton)
-	stopWrapped := container.NewGridWrap(fyne.NewSize(ICON_MIN_SIZE, ICON_MAX_SIZE), stopButton)
-	loopWrapped := container.NewGridWrap(fyne.NewSize(ICON_MIN_SIZE, ICON_MAX_SIZE), loopButton)
-
-	sliderRect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
-	sliderRect.SetMinSize(fyne.NewSize(SLIDER_RECT_WIDTH, SLIDER_RECT_HEIGHT))
-	volumeSliderWrapped := container.NewGridWrap(fyne.NewSize(VOLUME_SLIDER_WIDTH, VOLUME_SLIDER_HEIGHT), volumeSlider)
-	volumeWithBg := container.NewStack(sliderRect, volumeSliderWrapped)
-
-	playWrapped.Move(fyne.NewPos(BUTTON_START_X-20, BUTTONS_Y))
-	pauseWrapped.Move(fyne.NewPos(BUTTON_START_X+BUTTON_SIZE+BUTTONS_SPACING-20, BUTTONS_Y))
-	stopWrapped.Move(fyne.NewPos(BUTTON_START_X+(BUTTON_SIZE+BUTTONS_SPACING)*2-20, BUTTONS_Y))
-	loopWrapped.Move(fyne.NewPos(BUTTON_START_X+(BUTTON_SIZE+BUTTONS_SPACING)*3-20, BUTTONS_Y))
-	loopStatus.Move(fyne.NewPos(BUTTON_START_X+(BUTTON_SIZE+BUTTONS_SPACING)*3-33, BUTTONS_Y-25))
-	volumeWithBg.Move(fyne.NewPos(VOLUME_X, VOLUME_Y))
-	volumeWithBg.Resize(fyne.NewSize(VOLUME_SLIDER_WIDTH, VOLUME_SLIDER_HEIGHT))
-
-	seekSlider.Resize(fyne.NewSize(SEEK_SLIDER_WIDTH, SEEK_SLIDER_HEIGHT))
-	seekSlider.Move(fyne.NewPos((WINDOW_WIDTH-300)/2, BUTTONS_Y-20))
-
-	return container.NewWithoutLayout(playWrapped, pauseWrapped, stopWrapped, loopWrapped, volumeWithBg, loopStatus, seekSlider)
+	return seekSlider, volumeSlider
 }
 
-func MakeLabels(songLabel, timeLabel *widget.Label) *fyne.Container {
-	timeLabelY := LABEL_BUTTONS_Y - LABELS_HEIGHT*3 - LABELS_SPACING
-	songLabelY := LABEL_BUTTONS_Y - LABELS_HEIGHT*2 - LABELS_SPACING/2
-
-	timeLabel.Move(fyne.NewPos(LABELS_X, timeLabelY))
-	songLabel.Move(fyne.NewPos(LABELS_X, songLabelY))
-
-	return container.NewWithoutLayout(songLabel, timeLabel)
+func MakeNewToolbar(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) *fyne.Container {
+	toolbar := widget.NewToolbar(
+		widget.NewToolbarAction(icons.Play.Resource, func() {
+			player.PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
+		}),
+		widget.NewToolbarAction(icons.Pause.Resource, func() {
+			player.PauseOrResume()
+		}),
+		widget.NewToolbarAction(icons.Stop.Resource, func() {
+			player.CancelSong()
+		}),
+		widget.NewToolbarAction(icons.Loop.Resource, func() {
+			player.LoopSong(timeLabel, songLabel, seekSlider, volumeSlider)
+		}),
+	)
+	return container.NewCenter(toolbar)
 }
 
 func StyleLabels(songLabel, timeLabel *widget.Label) {
