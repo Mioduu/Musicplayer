@@ -1,37 +1,43 @@
 package ui
 
 import (
+	_ "embed"
 	"image/color"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
 )
 
+//go:embed font/Helvetica-Rounded-Bold.otf
+var HelveticaTTF []byte
+
+var HelveticaFont = fyne.NewStaticResource("assets/font/Helvetica-Rounded-Bold.otf", HelveticaTTF)
+
 type LofiTheme struct{}
 
 func (m *LofiTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
 	switch name {
 	case theme.ColorNameBackground:
-		return color.RGBA{230, 212, 190, 255}
+		return color.RGBA{72, 12, 168, 255} //TŁO
 	case theme.ColorNameButton:
-		return color.RGBA{70, 120, 105, 255}
+		return color.RGBA{247, 37, 133, 255} //PRZYCISKI
 	case theme.ColorNameDisabled:
-		return color.RGBA{160, 160, 160, 255}
+		return color.RGBA{100, 100, 100, 255} //WYLACZONE
 	case theme.ColorNameForeground:
-		return color.RGBA{60, 40, 30, 255}
+		return color.RGBA{148, 230, 255, 255} //AKCENT
 	case theme.ColorNamePrimary:
-		return color.RGBA{230, 147, 98, 255}
+		return color.RGBA{181, 23, 158, 255} //SLIDERY ITP
 	case theme.ColorNameInputBackground:
-		return color.RGBA{210, 195, 170, 255}
+		return color.RGBA{181, 23, 158, 255} //INPUT
 	case theme.ColorNamePlaceHolder:
-		return color.RGBA{150, 135, 115, 255}
+		return color.RGBA{253, 128, 184, 255} //PLACEHOLDER
 	default:
 		return theme.DefaultTheme().Color(name, variant)
 	}
 }
 
 func (m *LofiTheme) Font(style fyne.TextStyle) fyne.Resource {
-	return theme.DefaultTheme().Font(style)
+	return HelveticaFont
 }
 
 func (m *LofiTheme) Icon(name fyne.ThemeIconName) fyne.Resource {

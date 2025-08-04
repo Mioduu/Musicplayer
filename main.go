@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -46,7 +47,11 @@ func main() {
 	toolbarContainer := container.NewCenter(toolbarcontrol)
 	volumeContainer := container.NewStack(volumeSlider)
 	listUI := ui.MakeSongListUI(songList)
-
+	wrappedSeekSlider := container.New(
+		layout.NewGridWrapLayout(fyne.NewSize(ui.SEEK_SLIDER_WIDTH, ui.SEEK_SLIDER_HEIGHT)),
+		seekSlider,
+	)
+	centeredSeek := container.NewCenter(wrappedSeekSlider)
 	// spacer := layout.NewSpacer()
 
 	bottomBar := container.NewBorder(
@@ -57,7 +62,7 @@ func main() {
 		container.NewVBox(
 			songLabel,
 			timeLabel,
-			seekSlider,
+			centeredSeek,
 			toolbarContainer,
 		),
 	)

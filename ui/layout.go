@@ -15,7 +15,10 @@ import (
 )
 
 func MakeTitle() *fyne.Container {
-	label := widget.NewLabelWithStyle("Music Player", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	label := canvas.NewText("Music player", color.RGBA{76, 201, 240, 255})
+	label.Alignment = fyne.TextAlignCenter
+	label.TextStyle = fyne.TextStyle{Bold: true}
+	label.TextSize = 20
 	return container.NewCenter(label)
 }
 
@@ -34,9 +37,8 @@ func MakeSongList() (*widget.List, *[]string) {
 	}
 	return list, songs
 }
-
 func MakeSongListUI(list *widget.List) *fyne.Container {
-	rect := canvas.NewRectangle(color.RGBA{255, 255, 255, 120})
+	rect := canvas.NewRectangle(color.RGBA{58, 12, 163, 255})
 	rect.SetMinSize(fyne.NewSize(SONG_BACKGROUND_WIDTH, SONG_BACKGROUND_HEIGHT))
 	listScroll := container.NewVScroll(list)
 	listScroll.SetMinSize(fyne.NewSize(SONG_LIST_WIDTH, SONG_LIST_HEIGHT))
@@ -44,7 +46,10 @@ func MakeSongListUI(list *widget.List) *fyne.Container {
 }
 
 func MakeSongListLabel() *fyne.Container {
-	songList := widget.NewLabelWithStyle("Song list:", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	songList := canvas.NewText("Song list: ", color.RGBA{76, 201, 240, 255})
+	songList.Alignment = fyne.TextAlignCenter
+	songList.TextStyle = fyne.TextStyle{Bold: true}
+	songList.TextSize = 20
 	return container.NewCenter(songList)
 }
 
