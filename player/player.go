@@ -21,6 +21,8 @@ var (
 	StopTicker      chan struct{}
 	IsLooping       = false
 	SongListPointer *[]string
+	IsMuted                 = false
+	CurrentVolume   float64 = 0
 )
 
 var (
@@ -30,17 +32,19 @@ var (
 	isSeeking     bool
 )
 
-func ChangeVolume(volumeSlider *widget.Slider) {
-	volumeSlider.OnChanged = func(vol float64) {
-		if Volume == nil {
-			return
-		}
-		speaker.Lock()
-		Volume.Volume = vol
-		speaker.Unlock()
+func ChangeVolume(vol float64) {
+	if Volume == nil {
+		return
 	}
+	speaker.Lock()
+	Volume.Volume = vol
+	Volume.Silent = IsMuted
+	speaker.Unlock()
+
+	CurrentVolume = vol
 }
-func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
+
+func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, currVolume float64) {
 	currentIndex := -1
 	for i, name := range *SongListPointer {
 		if name == UserSong {
@@ -52,14 +56,17 @@ func PlayNextSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider,
 		nextIndex := (currentIndex + 1) % len(*SongListPointer)
 		UserSong = (*SongListPointer)[nextIndex]
 		SelectedTrack = filepath.Join(BasePath, UserSong+".mp3")
-		PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
+		PlaySong(timeLabel, songLabel, seekSlider, CurrentVolume)
 	} else {
 		fmt.Println("Nie znaleziono obecnej piosenki w liście")
+	}
+	if IsMuted {
+		Volume.Silent = true
 	}
 
 }
 
-func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
+func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, currVolume float64) {
 	if UserSong == "" {
 		fmt.Println("Nie wybrano żadnej piosenki")
 		return
@@ -95,8 +102,8 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, vol
 		Volume = &effects.Volume{
 			Streamer: Ctrl,
 			Base:     2,
-			Volume:   volumeSlider.Value,
-			Silent:   false,
+			Volume:   CurrentVolume,
+			Silent:   IsMuted,
 		}
 
 		duration := float64(streamer.Len()) / float64(format.SampleRate)
@@ -111,6 +118,7 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, vol
 			if !isSeeking && CurrentStreamer != nil {
 				speaker.Lock()
 				_ = CurrentStreamer.Seek(int(value))
+				Ctrl.Paused = false
 				speaker.Unlock()
 			}
 		}
@@ -135,9 +143,9 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, vol
 
 					if pos >= CurrentStreamer.Len() {
 						if IsLooping {
-							PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
+							PlaySong(timeLabel, songLabel, seekSlider, CurrentVolume)
 						} else {
-							PlayNextSong(timeLabel, songLabel, seekSlider, volumeSlider)
+							PlayNextSong(timeLabel, songLabel, seekSlider, CurrentVolume)
 						}
 						return
 					}
@@ -166,9 +174,29 @@ func CancelSong() {
 	}
 }
 
-func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) {
+func LoopSong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volume float64) {
 	IsLooping = !IsLooping
 	CancelSong()
-	// loopStatus.SetText(fmt.Sprintf("🔁 Loop: %s", map[bool]string{true: "ON", false: "OFF"}[IsLooping]))
-	PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
+	PlaySong(timeLabel, songLabel, seekSlider, CurrentVolume)
+}
+
+func MuteSong() {
+	if Volume == nil {
+		return
+	}
+	IsMuted = !IsMuted
+	speaker.Lock()
+	Volume.Silent = IsMuted
+	speaker.Unlock()
+
+}
+
+func UnmuteSong() {
+	if Volume == nil {
+		return
+	}
+	IsMuted = !IsMuted
+	speaker.Lock()
+	Volume.Silent = IsMuted
+	speaker.Unlock()
 }

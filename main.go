@@ -41,11 +41,11 @@ func main() {
 	timeLabel := widget.NewLabel("")
 	ui.StyleLabels(songLabel, timeLabel)
 
-	seekSlider, volumeSlider := ui.MakeSliders()
-	toolbarcontrol := ui.MakeNewToolbar(playerIcons, timeLabel, songLabel, seekSlider, volumeSlider)
+	seekSlider, volBox := ui.MakeSliders(playerIcons)
+	toolbarcontrol := ui.MakeNewToolbar(playerIcons, timeLabel, songLabel, seekSlider, volBox)
 
 	toolbarContainer := container.NewCenter(toolbarcontrol)
-	volumeContainer := container.NewStack(volumeSlider)
+	volumeContainer := container.NewCenter(volBox.Container)
 	listUI := ui.MakeSongListUI(songList)
 	wrappedSeekSlider := container.New(
 		layout.NewGridWrapLayout(fyne.NewSize(ui.SEEK_SLIDER_WIDTH, ui.SEEK_SLIDER_HEIGHT)),
@@ -54,39 +54,36 @@ func main() {
 	centeredSeek := container.NewCenter(wrappedSeekSlider)
 	// spacer := layout.NewSpacer()
 
-	bottomBar := container.NewBorder(
-		nil,
-		nil,
-		nil,
-		volumeContainer,
-		container.NewVBox(
-			songLabel,
-			timeLabel,
-			centeredSeek,
+	bottomBar := container.NewVBox(
+		songLabel,
+		timeLabel,
+		centeredSeek,
+		container.NewHBox(
+			layout.NewSpacer(),
 			toolbarContainer,
+			volumeContainer,
+			layout.NewSpacer(),
 		),
 	)
 
 	grid := container.NewBorder(
-		nil,       // Top
-		bottomBar, // Bottom
-		nil,       // Left
-		nil,       // Right
-		container.NewVBox( // Center
+		container.NewVBox(
 			title,
 			entry,
 			songListLabel,
 			listUI,
 		),
+		bottomBar,
+		nil,
+		nil,
+		nil,
 	)
 
-	w.SetContent(container.NewStack(
-		grid,
-	))
+	w.SetContent(grid)
 
 	fmt.Println("seekSlider MinSize:", seekSlider.MinSize())
 	fmt.Println("toolbar MinSize:", toolbarContainer.MinSize())
-	fmt.Println("volumeSlider MinSize:", volumeSlider.MinSize())
+	fmt.Println("volumeSlider MinSize:", volBox.VolumeSlider.MinSize())
 
 	// fmt.Println("Rozmiar:", background.Size())
 	w.ShowAndRun()

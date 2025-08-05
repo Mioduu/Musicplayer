@@ -14,6 +14,16 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+var volBox *VolumeBox
+
+type VolumeBox struct {
+	VolumeSlider *widget.Slider
+	VolumeLabel  *widget.Label
+	MuteButton   *widget.Toolbar
+	Container    *fyne.Container
+	Muted        bool
+}
+
 func MakeTitle() *fyne.Container {
 	label := canvas.NewText("Music player", color.RGBA{76, 201, 240, 255})
 	label.Alignment = fyne.TextAlignCenter
@@ -90,7 +100,7 @@ func LoadSongs(list *widget.List, songs *[]string) {
 	list.Refresh()
 }
 
-func MakeSliders() (*widget.Slider, *widget.Slider) {
+func MakeSliders(icons *Icons) (*widget.Slider, *VolumeBox) {
 	seekSlider := widget.NewSlider(0, 100)
 	seekSlider.Step = 1
 	seekSlider.Value = 0
@@ -99,15 +109,62 @@ func MakeSliders() (*widget.Slider, *widget.Slider) {
 	volumeSlider.Value = 0
 	volumeSlider.Step = 0.1
 	volumeSlider.Orientation = widget.Vertical
-	player.ChangeVolume(volumeSlider)
 
-	return seekSlider, volumeSlider
+	volumeLabel := widget.NewLabel("0 dB")
+
+	ChangeVolumeUI(volumeSlider, volumeLabel)
+
+	muteButton := widget.NewToolbar(
+		widget.NewToolbarAction(icons.Mute.Resource, func() {
+			if volBox.Muted {
+				player.UnmuteSong()
+				volBox.Muted = false
+				vol := volBox.VolumeSlider.Value
+				volBox.VolumeLabel.SetText(fmt.Sprintf("%.0f dB", vol))
+			} else {
+				player.MuteSong()
+				volBox.Muted = true
+				volumeLabel.SetText("🔇 mute")
+			}
+		}),
+	)
+
+	volumeBox := container.NewHBox(
+		container.NewVBox(
+			muteButton,
+			volumeLabel,
+		),
+		volumeSlider,
+	)
+
+	volBox = &VolumeBox{
+		VolumeSlider: volumeSlider,
+		VolumeLabel:  volumeLabel,
+		MuteButton:   muteButton,
+		Container:    volumeBox,
+		Muted:        false,
+	}
+
+	return seekSlider, volBox
 }
 
-func MakeNewToolbar(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volumeSlider *widget.Slider) *fyne.Container {
+func ChangeVolumeUI(volumeSlider *widget.Slider, volumeLabel *widget.Label) {
+	volumeSlider.OnChanged = func(vol float64) {
+		if volBox.Muted {
+			player.UnmuteSong()
+			volBox.Muted = false
+		}
+		volumeLabel.SetText(fmt.Sprintf("%.0f dB", vol))
+
+		player.ChangeVolume(vol)
+	}
+
+}
+
+func MakeNewToolbar(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, volBox *VolumeBox) *fyne.Container {
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(icons.Play.Resource, func() {
-			player.PlaySong(timeLabel, songLabel, seekSlider, volumeSlider)
+			player.PlaySong(timeLabel, songLabel, seekSlider, volBox.VolumeSlider.Value)
 		}),
 		widget.NewToolbarAction(icons.Pause.Resource, func() {
 			player.PauseOrResume()
@@ -116,7 +173,7 @@ func MakeNewToolbar(icons *Icons, timeLabel, songLabel *widget.Label, seekSlider
 			player.CancelSong()
 		}),
 		widget.NewToolbarAction(icons.Loop.Resource, func() {
-			player.LoopSong(timeLabel, songLabel, seekSlider, volumeSlider)
+			player.LoopSong(timeLabel, songLabel, seekSlider, volBox.VolumeSlider.Value)
 		}),
 	)
 	return container.NewCenter(toolbar)
