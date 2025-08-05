@@ -110,7 +110,7 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, cur
 		totalMin := int(duration) / 60
 		totalSec := int(duration) % 60
 
-		songLabel.SetText(fmt.Sprintf("Now playing: %s", UserSong))
+		songLabel.SetText(fmt.Sprintf("🎵 %s", UserSong))
 
 		seekSlider.Max = float64(streamer.Len())
 
@@ -136,7 +136,7 @@ func PlaySong(timeLabel, songLabel *widget.Label, seekSlider *widget.Slider, cur
 					cur := float64(pos) / float64(format.SampleRate)
 					curMin := int(cur) / 60
 					curSec := int(cur) % 60
-					timeLabel.SetText(fmt.Sprintf("Time duration: %d:%02d - %d:%02d", curMin, curSec, totalMin, totalSec))
+					timeLabel.SetText(fmt.Sprintf("%d:%02d/%d:%02d", curMin, curSec, totalMin, totalSec))
 					isSeeking = true
 					seekSlider.SetValue(float64(CurrentStreamer.Position()))
 					isSeeking = false
